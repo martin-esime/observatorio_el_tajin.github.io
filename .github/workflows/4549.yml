@@ -1,0 +1,21 @@
+name: .github/workflows/4549.yml
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # cada 30 min
+  workflow_dispatch:  # para probarlo a mano
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install requests fpdf2 beautifulsoup4
+      
+      - name: Checar C(t) y autosubir
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: python auto_4549_vivo.py
