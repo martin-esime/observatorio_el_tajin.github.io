@@ -1,0 +1,25 @@
+name: Monitor 4549
+on:
+  schedule:
+    - cron: '0,30 * * * *'
+  workflow_dispatch:
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests pillow numpy
+      - run: python monitor_mex.py
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+      - run: |
+          git config user.name "martin-esime"
+          git config user.email "martin@el-tajin.mx"
+          git add tabla_30.csv
+          git commit -m "update MH" || echo "sin cambios"
+          git push
