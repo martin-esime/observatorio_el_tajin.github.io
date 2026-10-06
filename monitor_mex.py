@@ -1,55 +1,81 @@
-# monitor_mex.py - Observatorio El Tajin Tihuatlan
-# Bitacora automatica de 30 eventos - filtro Mexico
-import csv, os, json, requests
-from datetime import datetime, timezone
+import csv, requests, datetime, os
+from io import BytesIO
+import numpy as np
+from PIL import Image
 
-CSV_FILE = "tabla_30.csv"
-AR_ACTUAL = "4549" # cambia esto cuando salga nueva region
-AREA = 650
-CT = 2.535 # este lo va a calcular tu model.py despues, ahorita manual
-TAU_PRED = "2026-10-07T04:00:00Z" # tu ventana
-DOI = os.getenv("DOI_URL", "por_publicar")
+ZENODO_TOKEN = os.getenv("ZENODO_TOKEN")
+AR = "AR4549"
 
-# 1. Asegura que existe tabla_30.csv
-if not os.path.exists(CSV_FILE):
-    with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["id","AR","fecha","area","C_t","pred_Tau_UTC","flare_real","Tau_real_UTC","error_min","acierto","DOI"])
+def get_MH_ahora():
+    # 1. Jala continuum HMI del SDO (última imagen)
+    url = "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIIC.jpg"
+    # En producción usa JSOC 4K: http://jsoc.stanford.edu/data/hmi/images/
+    r = requests.get(url, timeout=20)
+    img = Image.open(BytesIO(r.content)).convert("L")
+    arr = np.array(img)
 
-# 2. Lee cuantos van
-with open(CSV_FILE, "r", encoding="utf-8") as f:
-    rows = list(csv.reader(f))
-    next_id = len(rows) # porque fila 1 es header
+    # 2. Región AR4549 - la sacas del SRS, aprox centro del disco ahorita
+    # Por ahora threshold simple para demo: pixeles muy oscuros = mancha
+    # Tú ajustas el crop a las coordenadas reales de AR4549
+    dark_pixels = np.sum(arr < 50) # ajusta este 50 según HMI
+    total_sun_pixels = np.pi * (512**2) # para 1024 img
 
-# 3. Checa si ya existe AR4549 hoy para no duplicar
-fecha_hoy = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-ya_existe = any(AR_ACTUAL in r[1] and fecha_hoy in r[2] for r in rows[1:])
+    MH = int((dark_pixels / total_sun_pixels) * 1_000_000)
+    return max(MH, 10) # evita 0
 
-if not ya_existe and next_id <= 30:
-    print(f"Agregando evento {next_id} AR{AR_ACTUAL}")
-    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow([
-            next_id, # id
-            AR_ACTUAL, # AR
-            fecha_hoy, # fecha
-            AREA, # area
-            CT, # C(t)
-            TAU_PRED, # pred_Tau_UTC
-            "", # flare_real (se llena despues)
-            "", # Tau_real_UTC
-            "", # error_min
-            "", # acierto
-            DOI
-        ])
-else:
-    print("Ya existe hoy o ya llegamos a 30")
+def predecir_flare(historial):
+    # historial = lista de [timestamp, MH] últimos 30 días
+    if len(historial) < 4:
+        return None
 
-# 4. Opcional: consulta ultimo flare de NOAA para auto-llenar error
-try:
-    # API simple de GOES
-    r = requests.get("https://api.nasa.gov/DONKI/FLR?startDate=2026-10-05&endDate=2026-10-07&api_key=DEMO_KEY", timeout=10)
-    if r.status_code == 200:
-        print("DONKI consultado, listo para calcular error en fase 2")
-except:
-    print("Sin internet, solo se agrego prediccion")
+    mh_ahora = historial[-1][1]
+    mh_1h = historial[-3][1] if len(historial)>=3 else mh_ahora
+    dMH_dt = mh_ahora - mh_1h # crecimiento por hora
+
+    # Lógica de predicción para El Tajín
+    prob_M, prob_X, prob_sX = 0.2, 0.05, 0.01
+    if dMH_dt > 40: prob_M = 0.75
+    if dMH_dt > 40 and mh_ahora > 450: prob_X = 0.65
+    if mh_ahora > 600 and dMH_dt > 60: prob_sX = 0.4
+
+    hora_pred = datetime.datetime.utcnow() + datetime.timedelta(hours=6)
+
+    if prob_X > 0.6:
+        return {"clase": "X", "prob": prob_X, "hora": hora_pred, "dMH": dMH_dt}
+    if prob_M > 0.6:
+        return {"clase": "M", "prob": prob_M, "hora": hora_pred, "dMH": dMH_dt}
+    return None
+
+def guardar_y_avisar():
+    mh = get_MH_ahora()
+    ahora = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M")
+
+    # Guarda cada 30 min
+    with open("tabla_30.csv", "a", newline="") as f:
+        csv.writer(f).writerow([ahora, AR, mh])
+
+    # Lee historial
+    historial = []
+    try:
+        with open("tabla_30.csv") as f:
+            for row in csv.reader(f):
+                historial.append([row[0], int(row[2])])
+    except: pass
+    historial.append([ahora, mh])
+
+    pred = predecir_flare(historial)
+    if pred:
+        print(f"ALERTA {pred['clase']} prob {pred['prob']} a las {pred['hora']} MH={mh} dMH={pred['dMH']}")
+        # Aviso a Zenodo
+        if ZENODO_TOKEN:
+            requests.post("https://zenodo.org/api/deposit/depositions",
+                params={"access_token": ZENODO_TOKEN},
+                json={"metadata": {"title": f"Alerta {AR} {pred['clase']} {pred['hora']}",
+                                   "upload_type": "dataset",
+                                   "description": f"MH={mh} dMH/dt={pred['dMH']} pred {pred['clase']}",
+                                   "creators": [{"name": "El Tajin Monitor"}]}},
+                timeout=20
+            )
+
+if __name__ == "__main__":
+    guardar_y_avisar()
