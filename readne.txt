@@ -1,0 +1,37 @@
+OBSERVATORIO EL TAJIN - TIHUATLAN VER
+Modelo Olla a Presion v4 - Sin correr, 30 eventos
+
+ARCHIVOS:
+- model.py -> Busca en NOAA cualquier mancha AR de frente a Mexico, calcula C(t)
+- monitor_mex.py -> Llena tabla_30.csv automatico
+- tabla_30.csv -> Bitacora de 30 eventos (tu tesis)
+- ultimo_evento.json -> Lo crea model.py, lo lee el workflow
+-.github/workflows/4549.yml -> Corre cada 3 horas solo
+
+COMO CORRE SOLO:
+1. GitHub Actions corre model.py cada 3 horas (cron)
+2. Si C(t) > 2.0 y esta de frente (-70 a +70 lon) -> publica en tu pagina + avisa a SCIESMEX
+3. monitor_mex.py agrega fila a tabla_30.csv
+4. Hace push automatico
+
+PARA AJUSTAR SIN CORRER (FASE 1 - 10 eventos):
+- Solo mira tabla_30.csv en tu cel
+- Si ves que tu Tau siempre va 30 min tarde, en model.py cambia:
+  TAU_PRED = TAU_PRED - 30 min
+- Si C(t) > 2.5 y no da M, sube umbral a 2.7 en 4549.yml
+
+OBJETIVO 30:
+- Fila 1 a 10: Calibras
+- Fila 11 a 20: Ajuste fino
+- Fila 21 a 30: Ya no tocas nada, cuentas % acierto
+- Al final: 30 DOIs en Zenodo + correo a sciesmex@geofisica.unam.mx con tabla
+
+CONTACTO SCIESMEX OFICIAL:
+Correo: sciesmex@geofisica.unam.mx
+Jefe: Dr. Xavier Gonzalez xavier@igeofisica.unam.mx
+Facebook: facebook.com/sciesmex
+Twitter: @SCIESMEX
+
+NOTA: Sin compromiso, sin etiquetar en FB hasta 30. Solo correo directo.
+
+Tihuatlan, Ver - 06 Oct 2026 - 22:00 hora centro
