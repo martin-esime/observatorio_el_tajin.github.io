@@ -1,4 +1,4 @@
-import csv, requests, datetime, os
+import csv, requests, datetime, os, time
 from io import BytesIO
 import numpy as np
 from PIL import Image
@@ -7,62 +7,55 @@ ZENODO_TOKEN = os.getenv("ZENODO_TOKEN")
 AR = "AR4549"
 CSV = "tabla_30.csv"
 
-# FIX V2
-THRESH = 60 # antes 50, muy bajo para JPG
+THRESH = 60
 AC_CRIT = 510
+FACTOR = 1.36
 
 def get_prev_mh():
     try:
         with open(CSV, "r") as f:
             rows = list(csv.reader(f))
-            if rows:
-                return int(rows[-1][2])
+            # busca de abajo hacia arriba un número válido
+            for r in reversed(rows):
+                try:
+                    # intenta columna 2 (formato viejo) y columna 3 (formato Arkansas)
+                    val = int(r[2])
+                    if val > 50 and val < 5000:
+                        return val
+                except:
+                    try:
+                        val = int(r[3])
+                        if val > 50 and val < 5000:
+                            return val
+                    except:
+                        continue
     except:
         pass
-    return 400 # valor inicial razonable para 4549
+    return 400
 
 def get_MH_ahora():
     url = "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIIC.jpg"
     r = requests.get(url, timeout=30)
     img = Image.open(BytesIO(r.content)).convert("L")
     arr = np.array(img)
-
-    # --- FIX 1: ROI de AR4549 ---
-    # La 4549 esta en cuadrante SE ahora, no cuentes todo el sol
-    # ROI aprox para 1024: x 600-900, y 600-850 (ajusta si se mueve)
-    # Si no quieres ROI fijo, usa recorte central del disco
-    h, w = arr.shape
-    # recorta solo el disco solar central para no agarrar fondo negro
-    # el sol en 1024 mide ~930px diametro, centro ~512,512
     y1, y2 = 450, 900
     x1, x2 = 500, 950
     roi = arr[y1:y2, x1:x2]
-
-    # --- FIX 2: threshold 60 no 50 ---
     dark = np.sum(roi < THRESH)
+    MH = int(dark * FACTOR)
 
-    # --- FIX 3: conversion MH correcta ---
-    # en 1024, radio solar ~ 470px
-    # area total hemisferio = 1e6 MSH
-    # 1px en 1024 ~ 0.7 MSH aprox
-    # calibrado para que AR4549 de ~500 MSH
-    MH = int(dark * 1.35) # factor calibrado V2
-
-    # --- FIX 4: ANTI-CORTE 100 ---
     prev = get_prev_mh()
     if MH < 100 and prev > 250:
-        print(f"[FIX V2] caida {MH} -> corrige a {int(prev*0.95)} (prev {prev})")
+        print(f"[FIX ABAS] caida {MH} -> {int(prev*0.95)}")
         MH = int(prev * 0.95)
-
-    if MH < 50: # basura por nube en JPG
+    if MH < 50:
         MH = prev
-
     return max(MH, 50)
 
 def main():
     mh = get_MH_ahora()
-    ahora = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M")
-    existe = os.path.exists(CSV)
+    ahora = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%MZ")
+    existe = os.path.exists(CSV) and os.path.getsize(CSV) > 0
 
     with open(CSV, "a", newline="") as f:
         writer = csv.writer(f)
@@ -71,19 +64,15 @@ def main():
         ct = mh / AC_CRIT
         writer.writerow([ahora, AR, mh, f"{ct:.2f}"])
 
-    print(f"OK {ahora} MH={mh} C(t)={mh/AC_CRIT:.2f} THRESH={THRESH}")
-
-import time
+    print(f"OK {ahora} MH={mh} C(t)={mh/AC_CRIT:.2f} FACTOR={FACTOR}")
 
 if __name__ == "__main__":
     while True:
         try:
             main()
         except Exception as e:
-            print(f"ERROR {e} - reintentando en 5 min")
+            print(f"ERROR {e}")
             time.sleep(300)
             continue
-        
-        # espera 30 min
         print("Durmiendo 30 min...")
-        time.sleep(1800) # 1800 seg = 30 min
+        time.sleep(1800)
