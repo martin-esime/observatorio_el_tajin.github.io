@@ -73,5 +73,17 @@ def main():
 
     print(f"OK {ahora} MH={mh} C(t)={mh/AC_CRIT:.2f} THRESH={THRESH}")
 
+import time
+
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+        except Exception as e:
+            print(f"ERROR {e} - reintentando en 5 min")
+            time.sleep(300)
+            continue
+        
+        # espera 30 min
+        print("Durmiendo 30 min...")
+        time.sleep(1800) # 1800 seg = 30 min
