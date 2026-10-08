@@ -13,8 +13,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install requests pillow numpy astropy pandas fpdf
-      - run: python auto_4549_vivo.py
+      - run: pip install requests pillow numpy astropy pandas fpdf drms
+      - run: python auto_4549_jsoc.py
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
       - run: |
