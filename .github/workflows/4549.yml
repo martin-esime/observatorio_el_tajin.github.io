@@ -1,27 +1,32 @@
 name: Monitor 4549
 on:
   schedule:
-    - cron: '0,30 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install requests pillow numpy astropy pandas fpdf drms
-      - run: python auto_4549_jsoc.py
-        env:
-          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
-      - run: |
+          
+      - name: Instalar deps
+        run: pip install requests pillow numpy pandas
+        
+      - name: Corre JSOC
+        run: python auto_4549_jsoc.py
+        
+      - name: Guarda tablas
+        run: |
           git config user.name "martin-esime"
           git config user.email "martin-esime@users.noreply.github.com"
-          git add tabla_30.csv || true
-          git add *.pdf 2>/dev/null || true
-          git add -A
-          git diff --staged --quiet || git commit -m "auto: update 4549 - magnetograma real"
+          git add historial_vivo.csv tabla_30.csv
+          git diff --staged --quiet || git commit -m "auto: update 4549 pixel $(date -u)"
           git push
