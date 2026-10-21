@@ -1,5 +1,4 @@
 identificacion,Arkansas,fecha,area,Connecticut,dAdt_MSH_h,prob_M_6h,prob_X_6h,prediccion,pred_Tau_UTC,bengala_real,Tau_real_UTC,error_min,acierto
-AR4549,85,16-10-2026,495,1.854,70.0,35,17,Alerta leve - posible C fuerte | EMERGENCIA RAPIDA dA/dt=70.0,2026-10-16T19:39Z,,,,VIVO_JSOC_PIXEL_NOAA
 AR4549,82,16-10-2026,492,1.843,-6.0,20,2,Alerta leve - posible C fuerte,2026-10-16T22:42Z,,,,VIVO_JSOC_PIXEL_NOAA
 AR4549,82,17-10-2026,492,1.843,0.0,20,2,Alerta leve - posible C fuerte,2026-10-17T01:11Z,,,,VIVO_JSOC_PIXEL_NOAA
 AR4549,78,17-10-2026,488,1.828,-8.0,20,2,Alerta leve - posible C fuerte,2026-10-17T05:59Z,,,,VIVO_JSOC_PIXEL_NOAA
@@ -29,3 +28,4 @@ AR4549,50,20-10-2026,460,1.723,0.0,20,2,Alerta leve - posible C fuerte,2026-10-2
 AR4549,50,21-10-2026,460,1.723,0.0,20,2,Alerta leve - posible C fuerte,2026-10-21T01:54Z,,,,VIVO_JSOC_PIXEL_NOAA
 AR4549,50,21-10-2026,460,1.723,0.0,20,2,Alerta leve - posible C fuerte,2026-10-21T07:21Z,,,,VIVO_JSOC_PIXEL_NOAA
 AR4549,50,21-10-2026,460,1.723,0.0,20,2,Alerta leve - posible C fuerte,2026-10-21T13:07Z,,,,VIVO_JSOC_PIXEL_NOAA
+AR4549,50,21-10-2026,460,1.723,0.0,20,2,Alerta leve - posible C fuerte,2026-10-21T18:12Z,,,,VIVO_JSOC_PIXEL_NOAA
